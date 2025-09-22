@@ -1,0 +1,39 @@
+version: '3.4'
+
+services:
+    postgresql_database:
+        container_name: postgres_db
+        image: postgres:latest
+        environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=admin1234
+            - POSTGRES_DB=healthCheck
+        ports: 
+            - "5432:5432"
+        restart: always
+        volumes: 
+            - database-data:/var/lib/postgresql/data/
+
+    pgadmin:
+        container_name: pgadmin
+        image: dpage/pgadmin4
+        environment: 
+            - PGADMIN_DEFAULT_EMAIL=admin@org.in
+            - PGADMIN_DEFAULT_PASSWORD=admin1234
+        ports:
+            - '5050:80'
+        restart: always
+        volumes: 
+            - pgadmin:/root/.pgadmin
+    redis:
+        container_name: redis
+        image: redis:latest
+        ports:
+            - "6379:6379"
+        restart: always
+        volumes:
+            - redis-data:/data
+volumes:
+    database-data:
+    pgadmin:
+    redis-data:

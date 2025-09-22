@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: estapp
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 10000ms
+      database: 0
+      jedis:
+        pool:
+          max-active: 20
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 5
+  datasource:
+    url: jdbc:postgresql://localhost:5432/healthCheck
+    username: admin
+    password: admin1234
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+h2:
+  console:
+    enabled: true
+    path: /h2-console
+management:
+  endpoint:
+    health:
+      enabled: true
+      show:
+        details: "always"
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+
+# Zuora API configuration
+zuora:
+  base-url: https://rest.apisandbox.zuora.com
+  clientId: 51c60812-701f-4503-9554-339bf6cd72f1
+  clientSecret: 0u0YCmPadZ646fmP62W4vXDaJ=VxvZriMxjwrbC2
+  oauth-token: /oauth/token
+  workflow: /workflows
+
+
+# OAuth Token Cache Configuration
+oauth:
+  token:
+    cache:
+      ttl: 30
+      key:
+        prefix:
+          zuora_oauth_token:
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.est.zuora: DEBUG
+    org.springframework.data.redis: DEBUG
+
