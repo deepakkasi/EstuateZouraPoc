@@ -64,3 +64,5 @@ logging:
     com.est.zuora: DEBUG
     org.springframework.data.redis: DEBUG
 
+server:
+  port: 8081

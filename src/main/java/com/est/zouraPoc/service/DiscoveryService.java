@@ -8,5 +8,8 @@ import reactor.core.publisher.Mono;
 
 public interface DiscoveryService {
 	public Mono<ApiResponseWrapperDTO> getWorkflow();
+	public Mono<ApiResponseWrapperDTO> getWorkflowExport(int id);
+	//public Mono<ApiResponseWrapperDTO> getWorkflow();
+	//public Mono<ApiResponseWrapperDTO> getWorkflow();
 
 }

@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class ZouraPocApplication {
 
 	public static void main(String[] args) {
+		 //TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
 		SpringApplication.run(ZouraPocApplication.class, args);
 	}
 
