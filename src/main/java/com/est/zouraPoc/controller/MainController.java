@@ -1,7 +1,5 @@
 package com.est.zouraPoc.controller;
 
-
-
 import java.util.Map;
 
 import org.json.JSONArray;
@@ -18,25 +16,27 @@ import com.est.zouraPoc.service.DiscoveryService;
 
 import reactor.core.publisher.Mono;
 
-
 @RestController
 @RequestMapping("/api/v1")
 public class MainController {
-	
+
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
-    private final  DiscoveryService DiscoveryService;
-    @Autowired
-    MainController(DiscoveryService DiscoveryService){
-	    this.DiscoveryService=DiscoveryService;
-    }
-    
-	@GetMapping("/discovery")
-	public Mono<ApiResponseWrapperDTO> discovery() {
-	    return DiscoveryService.getWorkflow();
-	}
-	
-	
+    private final DiscoveryService DiscoveryService;
 
+    @Autowired
+    MainController(DiscoveryService DiscoveryService) {
+        this.DiscoveryService = DiscoveryService;
+    }
+
+    @GetMapping("/discovery")
+    public Mono<ApiResponseWrapperDTO> discovery() {
+        return DiscoveryService.getWorkflow();
+    }
+
+    @GetMapping("/export-workflows")
+    public Mono<ApiResponseWrapperDTO> exportWorkflows() {
+        return DiscoveryService.exportActiveWorkflows();
+    }
 
 }
