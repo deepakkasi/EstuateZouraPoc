@@ -31,11 +31,6 @@ public class MainController {
 
     @GetMapping("/discovery")
     public Mono<ApiResponseWrapperDTO> discovery() {
-        return DiscoveryService.getWorkflow();
-    }
-
-    @GetMapping("/export-workflows")
-    public Mono<ApiResponseWrapperDTO> exportWorkflows() {
         return DiscoveryService.exportActiveWorkflows();
     }
 
