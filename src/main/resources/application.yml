@@ -14,7 +14,7 @@ spring:
           max-idle: 10
           min-idle: 5
   datasource:
-    url: jdbc:postgresql://localhost:5432/healthCheck
+    url: jdbc:postgresql://localhost:5432/healthCheck?serverTimezone=UTC
     username: admin
     password: admin1234
     driver-class-name: org.postgresql.Driver
@@ -22,6 +22,12 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
 
 h2:
   console:
