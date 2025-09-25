@@ -39,9 +39,9 @@ public class MainController {
         log.info("Excel export endpoint called");
         return DiscoveryService.exportActiveWorkflowsToExcel()
                 .map(resource -> ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=workflow-deprecation-report.xlsx")
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .body(resource))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=workflow-deprecation-report.xlsx")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource))
                 .onErrorReturn(ResponseEntity.internalServerError().build());
     }
 

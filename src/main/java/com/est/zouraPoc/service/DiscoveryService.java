@@ -12,7 +12,7 @@ public interface DiscoveryService {
     public Mono<ApiResponseWrapperDTO> getWorkflowExport(int id);
 
     public Mono<ApiResponseWrapperDTO> exportActiveWorkflows();
-    
+
     public Mono<Resource> exportActiveWorkflowsToExcel();
 
 }

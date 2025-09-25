@@ -319,16 +319,16 @@ public class DiscoveryServiceImpl implements DiscoveryService {
     @Override
     public Mono<Resource> exportActiveWorkflowsToExcel() {
         log.info("Starting Excel export of active workflows with deprecation check");
-        
+
         // List of deprecated objects to check for
         Set<String> deprecatedObjects = Set.of("AmendmentType", "Amendment");
-        
+
         return oAuthTokenServiceImpl.getToken()
                 .flatMap(token -> webClientUtil.get(
-                        "/workflows",
-                        String.class,
-                        Map.of("Authorization", "Bearer " + token))
-                        .flatMap(workflowsResponse -> processActiveWorkflowsForExcel(workflowsResponse, token, deprecatedObjects)))
+                "/workflows",
+                String.class,
+                Map.of("Authorization", "Bearer " + token))
+                .flatMap(workflowsResponse -> processActiveWorkflowsForExcel(workflowsResponse, token, deprecatedObjects)))
                 .map(this::generateExcelFile)
                 .doOnSuccess(resource -> log.info("Successfully generated Excel file"))
                 .doOnError(error -> log.error("Error generating Excel file", error));
@@ -368,29 +368,29 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                                                     String.class,
                                                     Map.of("Authorization", "Bearer " + token)
                                             )
-                                            .map(exportResponse -> {
-                                                List<String> foundDeprecatedObjects = new ArrayList<>();
-                                                
-                                                // Check the export response for deprecated objects
-                                                for (String deprecatedObj : deprecatedObjects) {
-                                                    if (exportResponse.contains(deprecatedObj)) {
-                                                        foundDeprecatedObjects.add(deprecatedObj);
-                                                    }
-                                                }
-                                                
-                                                return WorkflowDeprecationReportDto.builder()
-                                                        .id(workflowId)
-                                                        .name(name)
-                                                        .status(status)
-                                                        .deprecatedObjects(foundDeprecatedObjects)
-                                                        .build();
-                                            })
-                                            .onErrorReturn(WorkflowDeprecationReportDto.builder()
-                                                    .id(workflowId)
-                                                    .name(name)
-                                                    .status(status)
-                                                    .deprecatedObjects(new ArrayList<>())
-                                                    .build());
+                                                    .map(exportResponse -> {
+                                                        List<String> foundDeprecatedObjects = new ArrayList<>();
+
+                                                        // Check the export response for deprecated objects
+                                                        for (String deprecatedObj : deprecatedObjects) {
+                                                            if (exportResponse.contains(deprecatedObj)) {
+                                                                foundDeprecatedObjects.add(deprecatedObj);
+                                                            }
+                                                        }
+
+                                                        return WorkflowDeprecationReportDto.builder()
+                                                                .id(workflowId)
+                                                                .name(name)
+                                                                .status(status)
+                                                                .deprecatedObjects(foundDeprecatedObjects)
+                                                                .build();
+                                                    })
+                                                    .onErrorReturn(WorkflowDeprecationReportDto.builder()
+                                                            .id(workflowId)
+                                                            .name(name)
+                                                            .status(status)
+                                                            .deprecatedObjects(new ArrayList<>())
+                                                            .build());
                                         } else {
                                             return Mono.empty(); // Skip non-active workflows
                                         }
@@ -416,10 +416,10 @@ public class DiscoveryServiceImpl implements DiscoveryService {
     private Resource generateExcelFile(List<WorkflowDeprecationReportDto> workflows) {
         try {
             log.info("Generating Excel file for {} workflows", workflows.size());
-            
+
             Workbook workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("Workflow Deprecation Report");
-            
+
             // Create header row
             Row headerRow = sheet.createRow(0);
             headerRow.createCell(0).setCellValue("Workflow ID");
@@ -427,17 +427,17 @@ public class DiscoveryServiceImpl implements DiscoveryService {
             headerRow.createCell(2).setCellValue("Status");
             headerRow.createCell(3).setCellValue("Deprecated Objects Found");
             headerRow.createCell(4).setCellValue("Deprecated Objects Count");
-            
+
             // Create header style
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
-            
+
             for (int i = 0; i < 5; i++) {
                 headerRow.getCell(i).setCellStyle(headerStyle);
             }
-            
+
             // Fill data rows
             int rowNum = 1;
             for (WorkflowDeprecationReportDto workflow : workflows) {
@@ -448,23 +448,23 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 row.createCell(3).setCellValue(workflow.getDeprecatedObjectsAsString());
                 row.createCell(4).setCellValue(workflow.getDeprecatedObjects().size());
             }
-            
+
             // Auto-size columns
             for (int i = 0; i < 5; i++) {
                 sheet.autoSizeColumn(i);
             }
-            
+
             // Convert to byte array
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             workbook.close();
-            
+
             byte[] excelBytes = outputStream.toByteArray();
             outputStream.close();
-            
+
             log.info("Excel file generated successfully with size: {} bytes", excelBytes.length);
             return new ByteArrayResource(excelBytes);
-            
+
         } catch (IOException e) {
             log.error("Error generating Excel file", e);
             throw new RuntimeException("Failed to generate Excel file", e);

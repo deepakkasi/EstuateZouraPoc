@@ -44,7 +44,6 @@ management:
       exposure:
         include: "*"
 
-
 # Zuora API configuration
 zuora:
   base-url: https://rest.apisandbox.zuora.com
@@ -52,7 +51,6 @@ zuora:
   clientSecret: 0u0YCmPadZ646fmP62W4vXDaJ=VxvZriMxjwrbC2
   oauth-token: /oauth/token
   workflow: /workflows
-
 
 # OAuth Token Cache Configuration
 oauth:

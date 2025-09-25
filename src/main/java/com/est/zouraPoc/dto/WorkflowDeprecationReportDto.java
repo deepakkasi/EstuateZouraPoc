@@ -12,12 +12,13 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class WorkflowDeprecationReportDto {
+
     private int id;
     private String name;
     private String status;
     private List<String> deprecatedObjects;
     private String deprecatedObjectsString; // Comma-separated string for Excel
-    
+
     public String getDeprecatedObjectsAsString() {
         if (deprecatedObjectsString != null) {
             return deprecatedObjectsString;
