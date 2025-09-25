@@ -1,10 +1,16 @@
 package com.est.zouraPoc.service;
 
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 import com.est.zouraPoc.Repository.WorkflowExportRepo;
 import com.est.zouraPoc.Repository.WorkflowRepo;
 import com.est.zouraPoc.dto.ApiResponseWrapperDTO;
+import com.est.zouraPoc.dto.WorkflowDeprecationReportDto;
 import com.est.zouraPoc.model.Workflow;
 import com.est.zouraPoc.model.WorkflowExport;
 import com.est.zouraPoc.util.WebClientUtil;
@@ -14,15 +20,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.transaction.Transactional;
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.io.IOException;
 
 @Service
 public class DiscoveryServiceImpl implements DiscoveryService {
@@ -306,5 +314,160 @@ public class DiscoveryServiceImpl implements DiscoveryService {
                 throw new RuntimeException("Failed to process workflow export", e);
             }
         });
+    }
+
+    @Override
+    public Mono<Resource> exportActiveWorkflowsToExcel() {
+        log.info("Starting Excel export of active workflows with deprecation check");
+
+        // List of deprecated objects to check for
+        Set<String> deprecatedObjects = Set.of("AmendmentType", "Amendment");
+
+        return oAuthTokenServiceImpl.getToken()
+                .flatMap(token -> webClientUtil.get(
+                "/workflows",
+                String.class,
+                Map.of("Authorization", "Bearer " + token))
+                .flatMap(workflowsResponse -> processActiveWorkflowsForExcel(workflowsResponse, token, deprecatedObjects)))
+                .map(this::generateExcelFile)
+                .doOnSuccess(resource -> log.info("Successfully generated Excel file"))
+                .doOnError(error -> log.error("Error generating Excel file", error));
+    }
+
+    public Mono<List<WorkflowDeprecationReportDto>> processActiveWorkflowsForExcel(String workflowsResponse, String token, Set<String> deprecatedObjects) {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            JsonNode rootNode = objectMapper.readTree(workflowsResponse);
+            JsonNode dataNode = rootNode.path("data");
+
+            // Convert to Flux for reactive processing
+            return Flux.fromIterable(dataNode)
+                    .flatMap(workflowItem -> {
+                        int workflowId = workflowItem.path("id").asInt();
+                        String detailUrl = "/workflows/" + workflowId;
+
+                        // Make reactive call to get workflow details
+                        return webClientUtil.get(
+                                detailUrl,
+                                String.class,
+                                Map.of("Authorization", "Bearer " + token)
+                        )
+                                .flatMap(workflowDetail -> {
+                                    try {
+                                        JsonNode detailNode = objectMapper.readTree(workflowDetail);
+                                        String status = detailNode.path("status").asText();
+                                        String name = detailNode.path("name").asText();
+
+                                        // Only process if status is "Active"
+                                        if ("Active".equalsIgnoreCase(status)) {
+                                            // Get workflow export to check for deprecated objects
+                                            String exportUrl = "/workflows/" + workflowId + "/export";
+                                            return webClientUtil.get(
+                                                    exportUrl,
+                                                    String.class,
+                                                    Map.of("Authorization", "Bearer " + token)
+                                            )
+                                                    .map(exportResponse -> {
+                                                        List<String> foundDeprecatedObjects = new ArrayList<>();
+
+                                                        // Check the export response for deprecated objects
+                                                        for (String deprecatedObj : deprecatedObjects) {
+                                                            if (exportResponse.contains(deprecatedObj)) {
+                                                                foundDeprecatedObjects.add(deprecatedObj);
+                                                            }
+                                                        }
+
+                                                        return WorkflowDeprecationReportDto.builder()
+                                                                .id(workflowId)
+                                                                .name(name)
+                                                                .status(status)
+                                                                .deprecatedObjects(foundDeprecatedObjects)
+                                                                .build();
+                                                    })
+                                                    .onErrorReturn(WorkflowDeprecationReportDto.builder()
+                                                            .id(workflowId)
+                                                            .name(name)
+                                                            .status(status)
+                                                            .deprecatedObjects(new ArrayList<>())
+                                                            .build());
+                                        } else {
+                                            return Mono.empty(); // Skip non-active workflows
+                                        }
+                                    } catch (IOException e) {
+                                        log.error("Error parsing workflow detail for ID {}: {}", workflowId, e.getMessage());
+                                        return Mono.empty();
+                                    }
+                                })
+                                .onErrorResume(error -> {
+                                    log.error("Error fetching workflow detail for ID {}: {}", workflowId, error.getMessage());
+                                    return Mono.empty();
+                                });
+                    })
+                    .collectList()
+                    .doOnSuccess(workflows -> log.info("Processed {} active workflows for Excel export", workflows.size()));
+
+        } catch (IOException e) {
+            log.error("Error parsing workflows response: {}", e.getMessage());
+            return Mono.just(new ArrayList<>());
+        }
+    }
+
+    private Resource generateExcelFile(List<WorkflowDeprecationReportDto> workflows) {
+        try {
+            log.info("Generating Excel file for {} workflows", workflows.size());
+
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Workflow Deprecation Report");
+
+            // Create header row
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Workflow ID");
+            headerRow.createCell(1).setCellValue("Workflow Name");
+            headerRow.createCell(2).setCellValue("Status");
+            headerRow.createCell(3).setCellValue("Deprecated Objects Found");
+            headerRow.createCell(4).setCellValue("Deprecated Objects Count");
+
+            // Create header style
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            for (int i = 0; i < 5; i++) {
+                headerRow.getCell(i).setCellStyle(headerStyle);
+            }
+
+            // Fill data rows
+            int rowNum = 1;
+            for (WorkflowDeprecationReportDto workflow : workflows) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(workflow.getId());
+                row.createCell(1).setCellValue(workflow.getName());
+                row.createCell(2).setCellValue(workflow.getStatus());
+                row.createCell(3).setCellValue(workflow.getDeprecatedObjectsAsString());
+                row.createCell(4).setCellValue(workflow.getDeprecatedObjects().size());
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < 5; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Convert to byte array
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+
+            byte[] excelBytes = outputStream.toByteArray();
+            outputStream.close();
+
+            log.info("Excel file generated successfully with size: {} bytes", excelBytes.length);
+            return new ByteArrayResource(excelBytes);
+
+        } catch (IOException e) {
+            log.error("Error generating Excel file", e);
+            throw new RuntimeException("Failed to generate Excel file", e);
+        }
     }
 }
